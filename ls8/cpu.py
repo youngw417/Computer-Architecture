@@ -115,7 +115,10 @@ class CPU:
 
         def stop():
             running = False
-            self.pc += 1 
+            return running
+
+       
+
 
         def errors():
             print(f'Unknown instruction {ir} at address {self.pc}')
@@ -132,7 +135,7 @@ class CPU:
             }
         
 
-        branch_table[n]()
+            branch_table[n]()
 
 
         while running:
@@ -148,7 +151,7 @@ class CPU:
                 # reg_num = self.ram_read(self.pc + 1)
                 # print(self.reg[reg_num])
                 # self.pc += 2
-                call_ta ble(2)
+                call_table(2)
             elif ir == 0b10100010:   # muliply
                 # reg_num = self.ram_read(self.pc + 1)
                 # reg_num2 = self.ram_read(self.pc + 2)
@@ -159,7 +162,7 @@ class CPU:
             elif ir ==  0b00000001:
                 # running = False
                 # self.pc += 1   
-                call_table(4)
+                running  = call_table(4)
 
             else:
                 # print(f'Unknown instruction {ir} at address {self.pc}')
