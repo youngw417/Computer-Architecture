@@ -10,6 +10,8 @@ class CPU:
         self.ram = [0] *  256
         self.pc = 0
         self.reg = [0] * 8
+        self.reg[7] = 0xF4
+        self.SP = self.reg[7]
 
     def load(self):
         """Load a program into memory."""
@@ -56,6 +58,8 @@ class CPU:
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
         #elif op == "SUB": etc
+        elif op == 'MULTIPLY':
+            self.reg[reg_a] *= self.reg[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -91,10 +95,34 @@ class CPU:
 # 01000111 # PRN R0
 # 00000000
 # 00000001 # HLT
+    """
+    PUSH
+    decrement SP
+    get the value in memory referenced  by pc 
+    get the register value at the location in register
+    load the value in the register to the memory at the address
+    referenced by SP
+    increment PC by 2
+
+    POP
+    get the value in memeroy referenced by pc
+    get the register referenced by the value in memory
+    save the value at memory at SP into the register
+    increment the SP
+    increment PC by 2
+    return the alue at the regist   
+ 
+
+
+    """
+    
+
 
     def run(self):
         """Run the CPU."""
         running = True
+  
+     
 
         def ldi():
             reg_num = self.ram_read(self.pc + 1)
@@ -110,7 +138,7 @@ class CPU:
         def multi():
             reg_num = self.ram_read(self.pc + 1)
             reg_num2 = self.ram_read(self.pc + 2)
-            self.reg[reg_num] *= self.reg[reg_num2]
+            self.alu('MULTIPLY', reg_num, reg_num2)
             self.pc += 3
 
         def stop():
@@ -124,6 +152,20 @@ class CPU:
             print(f'Unknown instruction {ir} at address {self.pc}')
             sys.exit(1)
 
+        def push():
+            self.SP -= 1
+            reg_num = self.ram_read(self.pc + 1)
+            value = self.reg[reg_num] 
+            self.ram_write(self.SP, value)
+            self.pc += 2
+    
+        def pop():
+            reg_num = self.ram_read(self.pc + 1)
+            self.reg[reg_num]= self.ram_read(self.SP)
+            self.SP += 1
+            self.pc += 2
+            return self.reg[reg_num]
+
         def call_table(n):
 
             branch_table = {
@@ -131,7 +173,9 @@ class CPU:
                 2: prn, 
                 3: multi,
                 4: stop,
-                5: errors
+                5: errors,
+                6: push,
+                7: pop
             }
         
 
@@ -163,6 +207,11 @@ class CPU:
                 # running = False
                 # self.pc += 1   
                 running  = call_table(4)
+            elif ir == 0b01000101:
+                call_table(6)
+
+            elif ir == 0b01000110:
+                call_table(7)
 
             else:
                 # print(f'Unknown instruction {ir} at address {self.pc}')
