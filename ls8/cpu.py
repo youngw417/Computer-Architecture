@@ -13,6 +13,18 @@ class CPU:
         self.reg[7] = 0xF4
         self.SP = self.reg[7]
 
+        self.branch_table = {
+                1: self.ldi,
+                2: self.prn, 
+                3: self.multi,
+                4: self.stop,
+                5: self.errors,
+                6: self.push,
+                7: self.pop,
+                8: self.call,
+                9: self.ret,
+                10: self.add
+    }
     def load(self):
         """Load a program into memory."""
 
@@ -115,73 +127,90 @@ class CPU:
 
 
     """
-    
+    def ldi(self):
+                reg_num = self.ram_read(self.pc + 1)
+                value = self.ram_read(self.pc + 2)
+                self.reg[reg_num] = value
+                self.pc += 3
+
+    def prn(self):
+        reg_num = self.ram_read(self.pc + 1)
+        print(self.reg[reg_num])
+        self.pc += 2
+
+    def multi(self):
+        reg_num = self.ram_read(self.pc + 1)
+        reg_num2 = self.ram_read(self.pc + 2)
+        self.alu('MULTIPLY', reg_num, reg_num2)
+        self.pc += 3
+    def add(self):
+        reg_num = self.ram_read(self.pc + 1)
+        reg_num2 = self.ram_read(self.pc + 2)
+        self.alu('ADD', reg_num, reg_num2)
+        self.pc += 3
+
+    def stop(self):
+        running = False
+        return running
+
+    def errors(self):
+        print(f'Unknown instruction at address {self.pc}')
+        sys.exit(1)
+
+    def push(self):
+        self.SP -= 1
+        reg_num = self.ram_read(self.pc + 1)
+        value = self.reg[reg_num] 
+        self.ram_write(self.SP, value)
+        self.pc += 2
+
+    def pop(self):
+        reg_num = self.ram_read(self.pc + 1)
+        self.reg[reg_num]= self.ram_read(self.SP)
+        self.SP += 1
+        self.pc += 2
+        return self.reg[reg_num]
+
+    """
+    call
+    decrement sp
+    save the return address in the stack
+
+    get a value in memory at pc for register number
+    get the value in register referenced by the value in memory
+    set the pc to the value
+
+    return
+    read the return address stored in stack
+    set the pc to the return address
+    increment SP
+
+    """
+    def call(self):
+        self.SP -= 1
+        return_add = self.pc + 2
+        self.ram_write(self.SP, return_add)
+        reg_num = self.ram_read(self.pc + 1)
+        value = self.reg[reg_num]
+        self.pc = value
+
+    def ret(self):
+        return_add = self.ram_read(self.SP)
+        self.pc = return_add
+        self.SP += 1
+
+
+
+
+    def call_table(self, n):
+
+        self.branch_table[n]()
 
 
     def run(self):
         """Run the CPU."""
         running = True
   
-     
-
-        def ldi():
-            reg_num = self.ram_read(self.pc + 1)
-            value = self.ram_read(self.pc + 2)
-            self.reg[reg_num] = value
-            self.pc += 3
-
-        def prn():
-            reg_num = self.ram_read(self.pc + 1)
-            print(self.reg[reg_num])
-            self.pc += 2
-
-        def multi():
-            reg_num = self.ram_read(self.pc + 1)
-            reg_num2 = self.ram_read(self.pc + 2)
-            self.alu('MULTIPLY', reg_num, reg_num2)
-            self.pc += 3
-
-        def stop():
-            running = False
-            return running
-
-       
-
-
-        def errors():
-            print(f'Unknown instruction {ir} at address {self.pc}')
-            sys.exit(1)
-
-        def push():
-            self.SP -= 1
-            reg_num = self.ram_read(self.pc + 1)
-            value = self.reg[reg_num] 
-            self.ram_write(self.SP, value)
-            self.pc += 2
-    
-        def pop():
-            reg_num = self.ram_read(self.pc + 1)
-            self.reg[reg_num]= self.ram_read(self.SP)
-            self.SP += 1
-            self.pc += 2
-            return self.reg[reg_num]
-
-        def call_table(n):
-
-            branch_table = {
-                1: ldi,
-                2: prn, 
-                3: multi,
-                4: stop,
-                5: errors,
-                6: push,
-                7: pop
-            }
-        
-
-            branch_table[n]()
-
-
         while running:
             ir = self.ram_read(self.pc)
             if ir == 0b10000010: # read from memory and setting it to register at cpu
@@ -189,33 +218,40 @@ class CPU:
                 # value = self.ram_read(self.pc + 2)
                 # self.reg[reg_num] = value
                 # self.pc += 3
-                call_table(1)
+                self.call_table(1)
 
             elif ir == 0b01000111:  # print
                 # reg_num = self.ram_read(self.pc + 1)
                 # print(self.reg[reg_num])
                 # self.pc += 2
-                call_table(2)
+                self.call_table(2)
             elif ir == 0b10100010:   # muliply
                 # reg_num = self.ram_read(self.pc + 1)
                 # reg_num2 = self.ram_read(self.pc + 2)
                 # self.reg[reg_num] *= self.reg[reg_num2]
                 # self.pc += 3
-                call_table(3)
+                self.call_table(3)
 
-            elif ir ==  0b00000001:
+            elif ir ==  0b00000001: # stop running
                 # running = False
                 # self.pc += 1   
-                running  = call_table(4)
-            elif ir == 0b01000101:
-                call_table(6)
+                running  = self.call_table(4)
+            elif ir == 0b01000101: # stack push
+                self.call_table(6)
 
-            elif ir == 0b01000110:
-                call_table(7)
+            elif ir == 0b01000110: # stack pop
+                self.call_table(7)
+            elif ir == 0b01010000:  # call subroutine
+                self.call_table(8) 
+            elif ir == 0b00010001:
+                self.call_table(9) # return subroutine
+            elif ir == 0b10100000:  # ADD
+                self.call_table(10)
 
             else:
                 # print(f'Unknown instruction {ir} at address {self.pc}')
                 # sys.exit(1)
-                call_table(5)
+                print('ir', bin(ir))
+                self.call_table(5)
                 
 
